@@ -1,30 +1,77 @@
-// 1. We import 'useState' to track data, and 'TouchableOpacity' for the button
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function HomeScreen() {
-  // 2. This is the "State". 
-  // 'streak' is the number. 'setStreak' is the tool to change the number.
-  // We start at 0.
   const [streak, setStreak] = useState(0);
+  const [lastDate, setLastDate] = useState<string | null>(null);
 
-  // 3. This function runs when you press the button
-  const handlePress = () => {
-    setStreak(streak + 1); 
+  // 1. Load data when the app starts
+  useEffect(() => {
+    loadStreak();
+  }, []);
+
+  const loadStreak = async () => {
+    try {
+      const savedStreak = await AsyncStorage.getItem('streak');
+      const savedDate = await AsyncStorage.getItem('lastDate');
+      
+      if (savedStreak !== null) setStreak(parseInt(savedStreak));
+      if (savedDate !== null) setLastDate(savedDate);
+    } catch (e) {
+      console.error("Failed to load streak");
+    }
+  };
+
+  // 2. The Logic: Handling the click
+  const handlePress = async () => {
+    const today = new Date().toLocaleDateString();
+
+    // Check if already clicked today
+    if (lastDate === today) {
+      Alert.alert("Good job!", "You already kept your streak alive today.");
+      return;
+    }
+
+    // Logic: If they missed yesterday, reset to 1. Otherwise, add 1.
+    // (For simplicity in this version, we just increment, but you can add the 'reset' logic here later)
+    const newStreak = streak + 1;
+    
+    // Update State (Visuals)
+    setStreak(newStreak);
+    setLastDate(today);
+
+    // Save to Storage (Phone Memory)
+    try {
+      await AsyncStorage.setItem('streak', newStreak.toString());
+      await AsyncStorage.setItem('lastDate', today);
+    } catch (e) {
+      console.error("Failed to save streak");
+    }
+  };
+
+  // 3. Reset Button (for testing)
+  const resetStreak = async () => {
+    setStreak(0);
+    setLastDate(null);
+    await AsyncStorage.clear();
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Streak</Text>
+      <Text style={styles.title}>Current Streak</Text>
       
-      {/* 4. We replace the hardcoded "0" with our variable {streak} */}
-      <Text style={styles.count}>{streak}</Text>
-      
-      <Text style={styles.subtitle}>days</Text>
+      <View style={styles.circle}>
+        <Text style={styles.count}>{streak}</Text>
+        <Text style={styles.subtitle}>DAYS</Text>
+      </View>
 
-      {/* 5. This is our Button */}
       <TouchableOpacity style={styles.button} onPress={handlePress}>
-        <Text style={styles.buttonText}>I did it today!</Text>
+        <Text style={styles.buttonText}>🔥 I Did It Today!</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={resetStreak}>
+        <Text style={styles.resetText}>Reset Logic (Dev Only)</Text>
       </TouchableOpacity>
     </View>
   );
@@ -35,37 +82,50 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#121212', // Dark Mode background
   },
   title: {
-    fontSize: 24,
-    color: '#333',
+    fontSize: 28,
+    color: '#FFF',
+    fontWeight: 'bold',
+    marginBottom: 30,
+  },
+  circle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 10,
+    borderColor: '#FF4500', // Orange Red
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 50,
+    backgroundColor: '#1E1E1E',
   },
   count: {
-    fontSize: 100,
+    fontSize: 80,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#FFF',
   },
   subtitle: {
-    fontSize: 20,
-    color: '#666',
-    marginBottom: 40, // Push the button down a bit
+    fontSize: 16,
+    color: '#888',
+    letterSpacing: 2,
   },
-  // New styles for the button
   button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 30, // Makes it round
-    elevation: 5, // Adds a shadow on Android
-    shadowColor: '#000', // Shadow for iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    backgroundColor: '#FF4500',
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    elevation: 5,
   },
   buttonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+  },
+  resetText: {
+    marginTop: 30,
+    color: '#444',
+    textDecorationLine: 'underline',
   }
 });
